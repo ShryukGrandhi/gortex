@@ -423,6 +423,10 @@ func renderCwdCoverage(cwd string, s *daemon.StatusResponse) string {
 			abs, len(contained), summary, len(contained), example)
 	default:
 		if pendingAutomaticCheckout(abs, s.TrackedRepos) {
+			if view := routedAutomaticCheckout(abs); view != nil {
+				return fmt.Sprintf("**cwd `%s` is tracked** as an automatic checkout of repo `%s` (checkout `%s`). Enforcement is active.\n",
+					abs, view.RepoPrefix, view.CheckoutID)
+			}
 			return fmt.Sprintf("⏳ **Checkout discovery is pending for cwd `%s`.** %s\n", abs, agents.PendingAutomaticCheckoutGuidance)
 		}
 		return fmt.Sprintf("⚠️  **cwd `%s` is not covered by any tracked repo.** Read/Grep/Glob/Bash will fall through to soft guidance only — graph tools won't be available for this directory.\n\nTo enable enforcement: `gortex track %s`\n",
@@ -438,6 +442,19 @@ func pendingAutomaticCheckout(cwd string, repos []daemon.TrackedRepoStatus) bool
 		}
 	}
 	return agents.PendingAutomaticCheckout(cwd, agents.FamilyRepoRoots(roots, hookConfiguredRepoRoots()))
+}
+
+// routedAutomaticCheckout returns the view serving cwd when the daemon routes
+// it to the checkout's own composed view. Tracked repos never list automatic
+// checkouts, so family identity alone cannot tell a routed worktree from one
+// still awaiting discovery; the daemon's answer is the one explain_view and
+// the dispatcher use (#933).
+func routedAutomaticCheckout(cwd string) *daemon.ProbeView {
+	result, ok := dirCoverageFn(cwd, sessionStartProbeBudget)
+	if !ok || result.View == nil || result.View.Kind != daemon.ProbeViewWorktree || !result.View.Exact {
+		return nil
+	}
+	return result.View
 }
 
 // Hooks read only declarations; an unavailable config does not invent family
