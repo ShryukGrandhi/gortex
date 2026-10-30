@@ -449,6 +449,13 @@ func (e *SubprocessExtractor) ExtractBounded(ctx context.Context, filePath strin
 	if limits.MaxNodes < 1 {
 		return nil, noUsage, &parser.ExtractionLimitError{Resource: "nodes", Limit: 0, Observed: 1}
 	}
+	// filePath is a repo-relative name the repository controls, so it can
+	// carry bytes that break env-var/shell handling in a plugin that later
+	// expands GORTEX_FILE_PATH. Reject control characters up front rather
+	// than exporting an unescaped path into the child environment.
+	if strings.ContainsAny(filePath, "\x00\n\r\t\v\f") {
+		return nil, noUsage, fmt.Errorf("extractor plugin: file path %q contains a control character", filePath)
+	}
 
 	result := e.fileOnlyResult(filePath, src)
 	if e.command == "" {
