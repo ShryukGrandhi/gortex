@@ -221,6 +221,8 @@ func TestShellSafeHookBinary(t *testing.T) {
 		{"unixAbsolute", "/opt/homebrew/bin/gortex", "/opt/homebrew/bin/gortex"},
 		{"bareName", "gortex", "gortex"},
 		{"forwardSlashesUnchanged", "C:/Users/me/gortex.exe", "C:/Users/me/gortex.exe"},
+		{"spaceInPath", "/opt/homebrew/bin/gortex beta/gortex.exe", "'/opt/homebrew/bin/gortex beta/gortex.exe'"},
+		{"dollarInPath", "/opt/$(whoami)/gortex", "'/opt/$(whoami)/gortex'"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
