@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -142,8 +143,21 @@ func ResolveHookCommand(w io.Writer) string {
 // than Windows-guarded — any backslash in an unquoted shell command is
 // a bug regardless of OS, and a real Unix binary path never contains
 // one as a separator.
+//
+// The normalized path is then single-quoted when it contains a character
+// a shell would interpret (space, tab, or any of `$"'&|;()` etc.). A
+// normal install path — /opt/homebrew/bin/gortex — is emitted unchanged;
+// a space would otherwise word-split the command and a `$var`/backtick
+// would expand at hook-fire time. A bare word from the PATH fallback is
+// already a simple token and needs no quoting.
+var shellSafePathToken = regexp.MustCompile(`^[A-Za-z0-9_./:+-]+$`)
+
 func shellSafeHookBinary(path string) string {
-	return strings.ReplaceAll(path, "\\", "/")
+	path = strings.ReplaceAll(path, "\\", "/")
+	if !shellSafePathToken.MatchString(path) {
+		return "'" + strings.ReplaceAll(path, "'", `'\''`) + "'"
+	}
+	return path
 }
 
 // HookCommandPathIsEphemeral reports whether cmd's binary path lives
