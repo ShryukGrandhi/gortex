@@ -185,6 +185,22 @@ func TestRenderCwdCoverageReportsRoutedAutomaticCheckout(t *testing.T) {
 	}
 }
 
+// During warmup the daemon reports a tracked repo with no Name and zero
+// nodes; the briefing must name it by prefix and say it is loading (#933).
+func TestRenderCwdCoverageNamesUnnamedLoadingRepo(t *testing.T) {
+	repo := t.TempDir()
+	status := &daemon.StatusResponse{TrackedRepos: []daemon.TrackedRepoStatus{{
+		Prefix: "gortex", Path: repo, Workspace: "gortex", Unloaded: true, Loading: true,
+	}}}
+	got := renderCwdCoverage(repo, status)
+	if !strings.Contains(got, "as repo `gortex`") || !strings.Contains(got, "still loading") || strings.Contains(got, "0 nodes") {
+		t.Fatalf("unnamed loading repo misreported:\n%s", got)
+	}
+	if lean := renderLeanReadiness(repo, status); !strings.Contains(lean, "tracked as `gortex`") {
+		t.Fatalf("lean readiness lost the repo name:\n%s", lean)
+	}
+}
+
 func TestRunSessionStartEmitsNeutralRoutingAndIdentifierGuidance(t *testing.T) {
 	configureLocalizationTerminalTestHome(t)
 	withFakeStatus(t, func() (*daemon.StatusResponse, error) { return nil, errDaemonUnreachable })
