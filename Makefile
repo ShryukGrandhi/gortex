@@ -158,9 +158,13 @@ build-windows:
 # no diff against what's checked in — drift means the bundle is stale
 # vs the source-of-truth content in
 # internal/agents/commands_bodies.go.
-claude-plugin: build
+#
+# The emitter needs none of the optional backends, so it is built without
+# `build`'s llama tag: the publish runner has no llama.cpp to link against.
+# `go run` also leaves a locally built ./gortex untouched.
+claude-plugin:
 	rm -rf ./claude-plugin
-	./$(BINARY) plugin emit --target ./claude-plugin --variant anthropic
+	go run -ldflags '$(LDFLAGS)' ./cmd/gortex/ plugin emit --target ./claude-plugin --variant anthropic
 	@echo "✓ Regenerated claude-plugin/ from internal/agents commands"
 
 claude-plugin-check: claude-plugin
